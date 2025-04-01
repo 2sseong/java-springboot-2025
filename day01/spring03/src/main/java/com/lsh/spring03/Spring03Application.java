@@ -26,6 +26,8 @@ public class Spring03Application {
 			System.out.print(names[i] + ">");
 		}
 
+		System.out.println();
+
 		// 두번째 방법
 		for (String name: names){
 			System.out.println(name);

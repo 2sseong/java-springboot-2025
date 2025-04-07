@@ -76,7 +76,7 @@ public class Spring04Application {
 		System.out.println(lastList);
 		System.out.println(lastList.size());
 
-		// 스트림API를 쓰면
+		// 스트림API를 쓰면 - 1줄로 끝!
 		System.out.println(originList.stream()
 									 .filter(s -> s.startsWith("c"))
 									 .map(String::toUpperCase).sorted().toList().size());

@@ -1,8 +1,7 @@
 package com.pknu.backboard.controller;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -10,6 +9,7 @@ import org.springframework.validation.BindingResult;
 import com.pknu.backboard.entity.Board;
 import com.pknu.backboard.service.BoardService;
 import com.pknu.backboard.validation.BoardForm;
+import com.pknu.backboard.validation.ReplyForm;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,16 +29,24 @@ public class BoardController {
     @Autowired
     private final BoardService boardService;
 
-    @GetMapping("/list")
-    public String getList(Model model) {
-        List<Board> boardList = this.boardService.getBoardList();
-        model.addAttribute("boardList", boardList);
+    // @GetMapping("/list")
+    // public String getList(Model model) {
+    // List<Board> boardList = this.boardService.getBoardList();
+    // model.addAttribute("boardList", boardList);
 
+    // return "board_list";
+    // }
+
+    @GetMapping("/list")
+    public String getList(Model model, @RequestParam(value = "page", defaultValue = "0") int page) {
+        Page<Board> pagingBoard = this.boardService.getBoardList(page);
+
+        model.addAttribute("pagingBoard", pagingBoard);
         return "board_list";
     }
 
     @GetMapping("/detail/{bno}")
-    public String getDetail(Model model, @PathVariable("bno") Long bno) {
+    public String getDetail(Model model, @PathVariable("bno") Long bno, ReplyForm replyForm) {
         Board board = this.boardService.getBoardOne(bno);
 
         model.addAttribute("board", board);

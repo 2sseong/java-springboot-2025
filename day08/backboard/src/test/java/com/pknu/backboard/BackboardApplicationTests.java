@@ -86,6 +86,17 @@ class BackboardApplicationTests {
 		assertEquals(3, boardRepository.count()); // 한건 지워서 3건 남음
 	}
 
+	@Test // INSERT INTO 200개만
+	void testInsertDummyJpa() {
+		for (int i = 0; i < 200; i++) {
+			Board board = new Board();
+			board.setTitle(String.format("테스트 더미데이터입니다 %03d", i));
+			board.setContent("특별한 내용은 없습니다.");
+
+			this.boardRepository.save(board);
+		}
+	}
+
 	@Test // 수정
 	void testUpdateOne() {
 		Optional<Board> opBoard = this.boardRepository.findById(1L); // 1번 보드 데이터 가져오기

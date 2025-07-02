@@ -1,5 +1,6 @@
 package com.pknu.backboard.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,5 +32,15 @@ public class BoardService {
         } else {
             throw new RuntimeException("board not found");
         }
+    }
+
+    // INSERT INTO board VALUES ...
+    public void setBoardOne(String title, String content) {
+        Board board = new Board();
+        board.setTitle(title);
+        board.setContent(content);
+        board.setCreateDate(LocalDateTime.now());
+
+        this.boardRepository.save(board);
     }
 }

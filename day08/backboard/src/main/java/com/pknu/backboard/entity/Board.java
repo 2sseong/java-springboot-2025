@@ -22,6 +22,8 @@ import lombok.Setter;
 @Entity // JPA 테이블 매핑 선언
 public class Board {
 
+    // @AllArgsConstructor 와 동일
+
     @Id // PK
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long bno; // Board 테이블의 PK, bno

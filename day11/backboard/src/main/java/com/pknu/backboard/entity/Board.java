@@ -2,6 +2,7 @@ package com.pknu.backboard.entity;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -41,12 +42,16 @@ public class Board {
     @Column(length = 250)
     private String title; // 게시판 제목
 
-    @Column(length = 8000)
+    @Column(length = 4000)
     private String content; // 게시글 내용
 
     // 작성자 추가
     @ManyToOne   // 사용자가 여러개의 글을 작성가능
     private Member writer;
+
+    // 좋아요클릭 사용자 추가
+    @ManyToMany
+    private Set<Member> like;
 
     @CreatedDate
     @Column(updatable = false)  // 한번 작성 후 수정하지 않음

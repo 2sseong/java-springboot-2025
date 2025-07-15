@@ -51,40 +51,38 @@
 ### Spring Boot 개발환경 설정
 
 - 필요요소
-
-  - Java, 개발툴, 데이터베이스
+    - Java, 개발툴, 데이터베이스
 
 - 중요점
+    - JPA가 최신 기술이기 때문에 Oracle 11g 이전 DB와는 사용하는 쿼리가 완전 다름
+    - JPA 기능 : 쿼리 작성하지 않고 JPA가 자동으로 쿼리를 생성하고 실행
+    - 게시판 페이징 사용 시
 
-  - JPA가 최신 기술이기 때문에 Oracle 11g 이전 DB와는 사용하는 쿼리가 완전 다름
-  - JPA 기능 : 쿼리 작성하지 않고 JPA가 자동으로 쿼리를 생성하고 실행
-  - 게시판 페이징 사용 시
+        - 최신버전 : OFFSET, FETCH 키워드 사용 가능
 
-    - 최신버전 : OFFSET, FETCH 키워드 사용 가능
+        ```sql
+        SELECT *
+          FROM board
+         ORDER BY create_date DESC
+        OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;
+        ```
 
-    ```sql
-    SELECT *
-      FROM board
-     ORDER BY create_date DESC
-    OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;
-    ```
+        - Oracle 11g 이하에서는 OFFSET, FETCH 키워드 사용 불가. 서브쿼리 rownum을 사용해서 페이징 쿼리 작성
 
-    - Oracle 11g 이하에서는 OFFSET, FETCH 키워드 사용 불가. 서브쿼리 rownum을 사용해서 페이징 쿼리 작성
-
-    ```sql
-    SELECT *
-      FROM (
-          SELECT inner_query.*, ROWNUM rnum
+        ```sql
+        SELECT * 
           FROM (
-              SELECT * FROM board
-              ORDER BY create_date DESC
-          ) inner_query
-          WHERE ROWNUM <= 30
-      )
-      WHERE rnum >= 21;
-    ```
+              SELECT inner_query.*, ROWNUM rnum
+              FROM (
+                  SELECT * FROM board
+                  ORDER BY create_date DESC
+              ) inner_query
+              WHERE ROWNUM <= 30
+          )
+          WHERE rnum >= 21;
+        ```
 
-  - `결론` : **Spring Boot에서 JPA를 사용하려면 Oracle 12 이상**은 사용해야 함
+    - `결론` : **Spring Boot에서 JPA를 사용하려면 Oracle 12 이상**은 사용해야 함
 
 - Java
 
@@ -378,921 +376,924 @@
 - 자바의 String 문자열을 웹페이지에 렌더링
 
 ## 6일차(06-30)
-
 - Spring Boot JPA + Oracle + Thymeleaf + React
-  - JPA : DB설계 없이 엔티티 클래스만으로 테이블을 자동 생성해주는 기술. SQL도 필요없음
-    - JPA 이전 - MyBatis(iBatis). SQL + XML로 구성된 ORM(Object Relational Mapaping) 기술
-  - H2 : Oracle, MySQL 등과 달리 인메모리DB. Spring Boot에서 자동으로 실행해주는 DB
-    - 개발할 때 사용. 운영시 이전할 때 DB 종류에 관계없이 이전이 가능. 개발동안 사용
-  - Thymeleaf : JSP 단점을 보안한 템플릿 형태 FE 개발방식
-    - Bootstrap은 필수로 사용
-  - 소셜로그인 : 구글, 카카오, 네이버 SSO 로그인 연동(OAuth 2.0)
-  - React : FE를 완전 분리
+    - JPA : DB설계 없이 엔티티 클래스만으로 테이블을 자동 생성해주는 기술. SQL도 필요없음
+        - JPA 이전 - MyBatis(iBatis). SQL + XML로 구성된 ORM(Object Relational Mapaping) 기술
+    - H2 : Oracle, MySQL 등과 달리 인메모리DB. Spring Boot에서 자동으로 실행해주는 DB
+        - 개발할 때 사용. 운영시 이전할 때 DB 종류에 관계없이 이전이 가능. 개발동안 사용
+    - Thymeleaf : JSP 단점을 보안한 템플릿 형태 FE 개발방식
+        - Bootstrap은 필수로 사용
+    - 소셜로그인 : 구글, 카카오, 네이버 SSO 로그인 연동(OAuth 2.0)
+    - React : FE를 완전 분리
 
 ### Spring Boot 프로젝트 생성
-
 1. 명령 팔레트로 시작(Ctrl + Shift + P) : Spring Initializr: Create a Gradle(Maven) Project
+    1. Sprint Boot version : 3.5.3
+    2. project language : Java
+    3. Group Id : com.pknu
+    4. Artifact Id : backboard
+    5. package type : Jar
+    6. Java version : 17
+    7. Dependency
+        - Spring boot DevTools : 개발시 필요한 명령어, 기능 포함
+        - Lombok : 어노테이션 등 편리하게 해주는 폴러그인 라이브러리
+        - Spring Web : 프론트엔드(html) 개발을 할 때 필요한 의존성
+        - Thymeleaf : html + Spring Boot 태그 매핑을 해주는 기능
+        - H2 Database(later) : 개발동안 필요한 인메모리DB
+        - Oracle Driver(later) : 실제 운영할 DB
+        - Spring Data JPA(later) : DB 생성 + ORM
 
-   1. Sprint Boot version : 3.5.3
-   2. project language : Java
-   3. Group Id : com.pknu
-   4. Artifact Id : backboard
-   5. package type : Jar
-   6. Java version : 17
-   7. Dependency
-
-      - Spring boot DevTools : 개발시 필요한 명령어, 기능 포함
-      - Lombok : 어노테이션 등 편리하게 해주는 폴러그인 라이브러리
-      - Spring Web : 프론트엔드(html) 개발을 할 때 필요한 의존성
-      - Thymeleaf : html + Spring Boot 태그 매핑을 해주는 기능
-      - H2 Database(later) : 개발동안 필요한 인메모리DB
-      - Oracle Driver(later) : 실제 운영할 DB
-      - Spring Data JPA(later) : DB 생성 + ORM
-
-   8. 저장위치 지정, Genetate into this folder 선택
-   9. 오른쪽 하단 프로젝트폴더 Open 버튼 클릭
+    8. 저장위치 지정, Genetate into this folder 선택
+    9. 오른쪽 하단 프로젝트폴더 Open 버튼 클릭
 
 2. Spring Boot Backboard project
-
-   - Gradle plugin : Dependency 파악. 프로젝트 업데이트
-   - Spring Boot dashboard : 프로젝트 실행
+    - Gradle plugin : Dependency 파악. 프로젝트 업데이트
+    - Spring Boot dashboard : 프로젝트 실행
 
 3. Spring Boot 설정파일
-   - build.gradle : 그레이들에서 설정할 구성내용
-   - application.properties : Spring Boot 프로젝트 자체 설정파일
-   - settings.gradle, gradle-wrapper.properties : 손댈일 없음
+    - build.gradle : 그레이들에서 설정할 구성내용
+    - application.properties : Spring Boot 프로젝트 자체 설정파일
+    - settings.gradle, gradle-wrapper.properties : 손댈일 없음
 
 ### 스프링부트 Backboard 프로젝트
-
 1. 기본 실행
+    1. resources/application.properties
 
-   1. resources/application.properties
+        ```properties
+        server.port=9097 # 포트변경
+        spring.output.ansi.enabled=always # 로그 색상 설정
 
-      ```properties
-      server.port=9097 # 포트변경
-      spring.output.ansi.enabled=always # 로그 색상 설정
+        logging.level.root=info   # 로그출력 레벨 설정
+        logging.file.name=C:/temp/backboard.log  # 로그파일 위치
+        ```
 
-      logging.level.root=info   # 로그출력 레벨 설정
-      logging.file.name=C:/temp/backboard.log  # 로그파일 위치
-      ```
+    2. build.gradle, Dependency
 
-   2. build.gradle, Dependency
+        ```gradle
+        dependencies {
+            // ... 생략
 
-      ```gradle
-      dependencies {
-          // ... 생략
+            // DB연동용 의존성
+            runtimeOnly 'com.h2database:h2'  // 개발시에만 사용하는 InmemoryDB H2
+            implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        }
+        ```
 
-          // DB연동용 의존성
-          runtimeOnly 'com.h2database:h2'  // 개발시에만 사용하는 InmemoryDB H2
-          implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-      }
-      ```
+    3. Controller 작업
 
-   3. Controller 작업
+        - MainController 생성
+        - 새 파일로 생성 or Menu Java New file > class 둘 다 동일
 
-      - MainController 생성
-      - 새 파일로 생성 or Menu Java New file > class 둘 다 동일
-
-   4. /resources/templates/ 에 Mapping 메서드 리턴값과 동일한 html을 작성
+    4. /resources/templates/ 에 Mapping 메서드 리턴값과 동일한 html을 작성
 
 2. DB연동
+    1. H2 DB 의존성 추가
+    2. application.properties에 H2관련 설정 추가
 
-   1. H2 DB 의존성 추가
-   2. application.properties에 H2관련 설정 추가
+        ```properties
+        ## H2 DB 설정
+        spring.h2.console.enabled=true
+        # 접속 URL
+        spring.h2.console.path=/h2-console
+        # H2 DB 파일위치 : ~/ (user/Admin/ 에 생성) : ./ 현재프로젝트 폴더 생성
+        spring.datasource.url=jdbc:h2:./local
+        spring.datasource.driver-class-name=org.h2.Driver
+        spring.datasource.username=sa
+        spring.datasource.password=
+        ```
 
-      ```properties
-      ## H2 DB 설정
-      spring.h2.console.enabled=true
-      # 접속 URL
-      spring.h2.console.path=/h2-console
-      # H2 DB 파일위치 : ~/ (user/Admin/ 에 생성) : ./ 현재프로젝트 폴더 생성
-      spring.datasource.url=jdbc:h2:./local
-      spring.datasource.driver-class-name=org.h2.Driver
-      spring.datasource.username=sa
-      spring.datasource.password=
-      ```
+    3. http://localhost:9097/h2-console 접속
+        <img src="./image/sb0012.png" width="450">
 
-   3. http://localhost:9097/h2-console 접속
-      <img src="./image/sb0012.png" width="450">
+    4. application.properties에 JPA 설정
 
-   4. application.properties에 JPA 설정
+        ```properties
+        ## JPA DB 설정
+        spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+        spring.jpa.hibernate.ddl-auto=update
+        ```
 
-      ```properties
-      ## JPA DB 설정
-      spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
-      spring.jpa.hibernate.ddl-auto=update
-      ```
+        - JPA 등의 ORM 작업시 사용하는 기술 : 하이버네이트
+            - spring.jpa.hibernate.ddl-auto 종류
+                - create : SB 서버 시작시 테이블을 모두 삭제 후 재생성(데이터모두 휘발)
+                - create-drop : create와 동일. 서버가 종료되면 테이블 모두 삭제
+                - `update` : 엔티티 변경부부만 적용. 원래 있던 데이터는 존재
+                - `validate` : 엔티티와 테이블간 차이점 검사만
+                - truncate : 데이터를 전부 날림
+                - none : 엔티티가 변경되어도 DB는 변경하지 않음
 
-      - JPA 등의 ORM 작업시 사용하는 기술 : 하이버네이트
-        - spring.jpa.hibernate.ddl-auto 종류
-          - create : SB 서버 시작시 테이블을 모두 삭제 후 재생성(데이터모두 휘발)
-          - create-drop : create와 동일. 서버가 종료되면 테이블 모두 삭제
-          - `update` : 엔티티 변경부부만 적용. 원래 있던 데이터는 존재
-          - `validate` : 엔티티와 테이블간 차이점 검사만
-          - truncate : 데이터를 전부 날림
-          - none : 엔티티가 변경되어도 DB는 변경하지 않음
+    5. MVC 패턴에 맞춰 각 기능별로 패키지(폴더) 생성
+        - entity, repository, service, controller ...
+        - templates 내 html
 
-   5. MVC 패턴에 맞춰 각 기능별로 패키지(폴더) 생성
+    6. @(Annotation) 정리
+        - Lombok
+            - `@Getter` : getter 메서드 자동 생성
+            - `@Setter` : setter 메서드 자동 생성
+        - JPA
+            - `@Entity` : 테이블화 할 객체 선언
+            - @Id : 테이블 PK
+            - @GeneratedValue(strategy = GenerationType.SEQUENCE)
+                - AUTO : JPA가 자동 선별. 사용 지양
+                - `IDENTITY` : SQLServer Identity(1, 1), MySQL Auto-Increment
+                - `SEQUENCE` : Oracle Sequence
+                - H2 DB를 오라클 타입으로 사용하고, 나중에 운영DB를 오라클로 갈아타겠다!
+        - @Column : 컬럼의 속성을 변경 (ex: @Column(name="subject", length = 250))
+            - name : DB상의 실제 컬럼명을 엔티티와 다르게 사용할 때
+            - length : 길이를 지정
+            - updatable : 최초 작성이후 수정여부. false는 수정불가
+            - columnDefinition : "TEXT" MySQL, "CLOB" Oracle. H2는 사용불가
+        - SpringFramework
+            - @CreatedDate : 생성일
+            - @LastModifiedDate : 최종수정일 에 대한 어노테이션
 
-      - entity, repository, service, controller ...
-      - templates 내 html
+    7. entity 패키지(폴더) 작성
+        1. 테이블로 생성할 Board 클래스 생성
+        2. Lombok @Getter/@Setter를 사용하면 Get~, Set~ 메서드를 작성할 필요없음
 
-   6. @(Annotation) 정리
-
-      - Lombok
-        - `@Getter` : getter 메서드 자동 생성
-        - `@Setter` : setter 메서드 자동 생성
-      - JPA
-        - `@Entity` : 테이블화 할 객체 선언
-        - @Id : 테이블 PK
-        - @GeneratedValue(strategy = GenerationType.SEQUENCE)
-          - AUTO : JPA가 자동 선별. 사용 지양
-          - `IDENTITY` : SQLServer Identity(1, 1), MySQL Auto-Increment
-          - `SEQUENCE` : Oracle Sequence
-          - H2 DB를 오라클 타입으로 사용하고, 나중에 운영DB를 오라클로 갈아타겠다!
-      - @Column : 컬럼의 속성을 변경 (ex: @Column(name="subject", length = 250))
-        - name : DB상의 실제 컬럼명을 엔티티와 다르게 사용할 때
-        - length : 길이를 지정
-        - updatable : 최초 작성이후 수정여부. false는 수정불가
-        - columnDefinition : "TEXT" MySQL, "CLOB" Oracle. H2는 사용불가
-      - SpringFramework
-        - @CreatedDate : 생성일
-        - @LastModifiedDate : 최종수정일 에 대한 어노테이션
-
-   7. entity 패키지(폴더) 작성
-
-      1. 테이블로 생성할 Board 클래스 생성
-      2. Lombok @Getter/@Setter를 사용하면 Get~, Set~ 메서드를 작성할 필요없음
-
-   8. repository 패키지(폴더) 작성
-      1. DB상의 데이터를 조회, 저장, 수정, 삭제할 수 있게 도와주는 인터페이스
-      2. SELECT -> findAll(), INSERT -> save() 메서드를 기본 제공
-      3. BoardRepository 인터페이스 생성
+    8. repository 패키지(폴더) 작성
+        1. DB상의 데이터를 조회, 저장, 수정, 삭제할 수 있게 도와주는 인터페이스
+        2. SELECT -> findAll(), INSERT -> save() 메서드를 기본 제공
+        3. BoardRepository 인터페이스 생성
 
 3. 단위 테스트
+    1. build.gradle에 JUnit 의존성 추가
 
-   1. build.gradle에 JUnit 의존성 추가
+        ```gradle
+        // JUnit 단위테스트
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+        ```
+    2. INSERT 단위테스트    
+    3. test/.../backboard/BackboardApplicationTests.java 에 단위테스트 메서드 작성
 
-      ```gradle
-      // JUnit 단위테스트
-      testImplementation 'org.junit.jupiter:junit-jupiter'
-      ```
+        <img src="./image/sb0013.png" width="600">
 
-   2. INSERT 단위테스트
-   3. test/.../backboard/BackboardApplicationTests.java 에 단위테스트 메서드 작성
+    4. SELECT, SELECT ... WHERE 단위테스트
+    5. 디버그콘솔에서 쿼리 로그로 확인. application.properties 설정추가
 
-   <img src="./image/sb0013.png" width="600">
+        ```properties
+        # 테스트시 쿼리 확인
+        spring.jpa.properties.hibernate.format_sql=true
+        spring.jpa.properties.hibernate.show_sql=true
+        ```
 
-   4. SELECT, SELECT ... WHERE 단위테스트
-   5. 디버그콘솔에서 쿼리 로그로 확인. application.properties 설정추가
-
-      ```properties
-      # 테스트시 쿼리 확인
-      spring.jpa.properties.hibernate.format_sql=true
-      spring.jpa.properties.hibernate.show_sql=true
-      ```
-
-   6. SELCT ... WHERE LIKE, DELETE FROM 단위테스트
+    6. SELCT ... WHERE LIKE, DELETE FROM 단위테스트
 
 ## 7일차(07-01)
 
 ### 스프링부트 Backboard 프로젝트(계속)
-
-1. 단위 테스트
-
-- UPDATE 테스트
+1. 단위 테스트 
+  - UPDATE 테스트
 
 2. DB연동 개발 계속
+    1. Entity 중 Board(게시글)의 댓글 Reply 클래스 생성
+    2. DB ERD에서 Board : Reply => 1:N(1대 다)를 관계를 가짐
+    3. @(Annotation) 추가
+        - @OneToMany(mappedBy = "board", cascade = CascadeType.REMOVE) : 1대다 ERD 관계로 부모클래스(테이블)에 작성하는 부분
+        - @ManyToOne : 다대1 ERD관계로 자식클래스에 작성하는 부분
+        - @Service : 서비스 모듈을 지칭(SpringFramework)
+        - @RequiredArgsConstructor : final등의 멤버변수를 파라미터로 생성자를 만들어주는 것(Lombok)
+        - @AllArgsContructor : 클래스 멤버변수를 사용해서 생성자를 만들어주는 것(Lombok)
+        - @NoArgsContructor : 파라미터(클래스 멤버변수) 없는 빈생성자를 자동으로 생성(Lombok)
+    4. ReplyRepository 인터페이스 작성
+    5. Service 작성
+        - 데이터 처리를 위해서 작성하는 클래스. MVC처럼 패턴처럼 모듈화로 복잡한 코드를 단순화, 역할분리를 위해서
+        - Controller는 게이트(문) 사용자가 접속해서 요청하는 부분
+    6. 엔티티를 DTO 객체 변환
+        - Entity : DB와 연결되어 있는 클래스. 이 객체를 그대로 사용해서 FE로 보내는 방식이 좋지 않음
+        - Dto 사용은 옵션으로 할 수도 있음
 
-   1. Entity 중 Board(게시글)의 댓글 Reply 클래스 생성
-   2. DB ERD에서 Board : Reply => 1:N(1대 다)를 관계를 가짐
-   3. @(Annotation) 추가
-      - @OneToMany(mappedBy = "board", cascade = CascadeType.REMOVE) : 1대다 ERD 관계로 부모클래스(테이블)에 작성하는 부분
-      - @ManyToOne : 다대1 ERD관계로 자식클래스에 작성하는 부분
-      - @Service : 서비스 모듈을 지칭(SpringFramework)
-      - @RequiredArgsConstructor : final등의 멤버변수를 파라미터로 생성자를 만들어주는 것(Lombok)
-      - @AllArgsContructor : 클래스 멤버변수를 사용해서 생성자를 만들어주는 것(Lombok)
-      - @NoArgsContructor : 파라미터(클래스 멤버변수) 없는 빈생성자를 자동으로 생성(Lombok)
-   4. ReplyRepository 인터페이스 작성
-   5. Service 작성
-      - 데이터 처리를 위해서 작성하는 클래스. MVC처럼 패턴처럼 모듈화로 복잡한 코드를 단순화, 역할분리를 위해서
-      - Controller는 게이트(문) 사용자가 접속해서 요청하는 부분
-   6. 엔티티를 DTO 객체 변환
+    7. BoardController 작성
+    8. /templates/board_list.html 생성 
+        - thymeleaf 문법 적용
 
-      - Entity : DB와 연결되어 있는 클래스. 이 객체를 그대로 사용해서 FE로 보내는 방식이 좋지 않음
-      - Dto 사용은 옵션으로 할 수도 있음
+          <img src="./image/sb0014.png" width="600">
 
-   7. BoardController 작성
-   8. /templates/board_list.html 생성
+    9. 상세 페이지 작업
+        - Service, Controller 메서드 작업
 
-      - thymeleaf 문법 적용
-
-        <img src="./image/sb0014.png" width="600">
-
-   9. 상세 페이지 작업
-
-      - Service, Controller 메서드 작업
-
-   10. 상세 페이지에 댓글 저장 기능 추가
-       - board_detail.html에 댓글 저장 폼양식 추가
-       - ReplyService, ReplyController 각각 생성, 작성
-
+    10. 상세 페이지에 댓글 저장 기능 추가
+        - board_detail.html에 댓글 저장 폼양식 추가
+        - ReplyService, ReplyController 각각 생성, 작성
+    
 3. thymeleaf 문법
-
-   - ${} : 변수 표현식. 변수에 들어있는 값을 화면에 표시하는 기능. Model에 들어있는 데이터를 화면에 표시
-   - @{} : URL링크 표현식. 정적인 링크 또는 라우팅되는 경로를 생성하는 기능
-   - #{} : 메시지 표현식
-   - \*{} : 선택변수 표현식. th:object 로 선택된 객체 내의 값에 접근
-   - ~{} : Fragment포함 표현식. 템플릿 Fragement를 사용
-   - thymeleaf 속성에만 사용가능 : th:text, th:href ...
+    - ${} : 변수 표현식. 변수에 들어있는 값을 화면에 표시하는 기능. Model에 들어있는 데이터를 화면에 표시
+    - @{} : URL링크 표현식. 정적인 링크 또는 라우팅되는 경로를 생성하는 기능
+    - #{} : 메시지 표현식
+    - *{} : 선택변수 표현식. th:object 로 선택된 객체 내의 값에 접근
+    - ~{} : Fragment포함 표현식. 템플릿 Fragement를 사용
+    - thymeleaf 속성에만 사용가능 : th:text, th:href ... 
 
 4. 웹 페이지 디자인
-
-   1. resources/static : css, js, 정적html 파일들이 위치
-   2. static/main.css : 전체에서 사용할 css 파일
-   3. Bootstrap 적용
-
-   - https://getbootstrap.com Current v5.3.7 download 클릭
-   - https://github.com/twbs/icons/releases/tag/v1.13.1
-
-   4. board_detail.html : 부트스트랩 적용
-
+    1. resources/static : css, js, 정적html 파일들이 위치
+    2. static/main.css : 전체에서 사용할 css 파일
+    3. Bootstrap 적용
+      - https://getbootstrap.com Current v5.3.7 download 클릭
+      - https://github.com/twbs/icons/releases/tag/v1.13.1 
+    4. board_detail.html : 부트스트랩 적용
+  
 5. 전체 HTML에 디자인 적용
+    1. build.gradle에 thymeleaf-layout 의존성 추가
+        ```gradle
+        // Thymeleaf layout 의존성 추가. 250701. 신규추가. Hugo.
+	      implementation 'nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect'
+        ```
 
-   1. build.gradle에 thymeleaf-layout 의존성 추가
+    2. 레이아웃 템플릿 페이지 작성
+    3. board_list.html 에 적용    
 
-      ```gradle
-      // Thymeleaf layout 의존성 추가. 250701. 신규추가. Hugo.
-        implementation 'nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect'
-      ```
+        https://github.com/user-attachments/assets/e34d7247-6812-448f-b198-fd0b3896a657
 
-   2. 레이아웃 템플릿 페이지 작성
-   3. board_list.html 에 적용
-
-      https://github.com/user-attachments/assets/e34d7247-6812-448f-b198-fd0b3896a657
 
 ## 8일차
-
 ### 스프링부트 Backboard 프로젝트(계속)
-
 1. DB연동 개발
+    1. 게시글 등록 기능
+    2. Spring Boot Validation 기능 추가 : 입력 검증
 
-   1. 게시글 등록 기능
-   2. Spring Boot Validation 기능 추가 : 입력 검증
+        ```gradle
+        // 추가 의존성
+	      implementation 'org.springframework.boot:spring-boot-starter-validation'
+        ```
+        - Annotation으로 검증 수행
+            - @Size, @NotNull, @NotEmpty, @Past(과거날짜만 가능), @Future(미래날짜만)
+            - @FutureOrPresent(미래또는 오늘날짜만), @Pattern(정규식패턴)
 
-      ```gradle
-      // 추가 의존성
-        implementation 'org.springframework.boot:spring-boot-starter-validation'
-      ```
+    3. 입력검증 클래스, BoardForm.java 생성
+    4. BoardForm 객체를 컨트롤러에 전달
+    5. board_create.html에 입력검증 태그, 속성 등 추가
+        - GetMapping, PostMapping 메서드에 BoardForm 파라미터를 추가!
 
-      - Annotation으로 검증 수행
-        - @Size, @NotNull, @NotEmpty, @Past(과거날짜만 가능), @Future(미래날짜만)
-        - @FutureOrPresent(미래또는 오늘날짜만), @Pattern(정규식패턴)
+    6. board_detail.html에 댓글 입력 검증 태그 추가
+        - ReplyController 의 PostMapping 메서드에 ReplyForm을 파라미터로 추가
+        - BoardController의 GetMapping 메서드에 ReplyForm을 @Valid 파라미터로 추가        
 
-   3. 입력검증 클래스, BoardForm.java 생성
-   4. BoardForm 객체를 컨트롤러에 전달
-   5. board_create.html에 입력검증 태그, 속성 등 추가
-
-      - GetMapping, PostMapping 메서드에 BoardForm 파라미터를 추가!
-
-   6. board_detail.html에 댓글 입력 검증 태그 추가
-
-      - ReplyController 의 PostMapping 메서드에 ReplyForm을 파라미터로 추가
-      - BoardController의 GetMapping 메서드에 ReplyForm을 @Valid 파라미터로 추가
-
-   7. 검증영역 태그를 valid_error.html 템플릿 생성
+    7. 검증영역 태그를 valid_error.html 템플릿 생성
 
 2. Bootstrap 템플릿 사이트
-
-   - https://startbootstrap.com/
-   - https://bootstrapmade.com/bootstrap-5-templates/
-   - https://mdbootstrap.com/freebies/
-   - https://bootstrapmade.com/
-   - https://www.youtube.com/@codehal (No Bootstrap)
+    - https://startbootstrap.com/
+    - https://bootstrapmade.com/bootstrap-5-templates/
+    - https://mdbootstrap.com/freebies/
+    - https://bootstrapmade.com/
+    - https://www.youtube.com/@codehal (No Bootstrap)
 
 3. Bootstrap Navigation 구현
-
-   - templates/layout.html 네비게이션 태그 작성
+    - templates/layout.html 네비게이션 태그 작성
 
 4. Paging : 대량 데이터 로드시 속도 개선
+    - Dummy Data 생성 : Unit 테스트로 대략 200건 입력
+    - Page, Pageable 인터페이스
+        ```java
+        import org.springframework.data.domain.Page;
+        import org.springframework.data.domain.Pageable;
+        ```
 
-   - Dummy Data 생성 : Unit 테스트로 대략 200건 입력
-   - Page, Pageable 인터페이스
+    - BoardRepository 인터페이스에 페이징용 findAll() 재정의
+    - BoardService 클래스에 페이징용 getBoardList() 오버로딩 작성
+    - BoardController 클래스에 getList()에 페이징 파라미터 추가
+    - board_list.html에 페이징 컨트롤 추가
 
-     ```java
-     import org.springframework.data.domain.Page;
-     import org.springframework.data.domain.Pageable;
-     ```
+        <img src="./image/sb0015.png" width="600">
 
-   - BoardRepository 인터페이스에 페이징용 findAll() 재정의
-   - BoardService 클래스에 페이징용 getBoardList() 오버로딩 작성
-   - BoardController 클래스에 getList()에 페이징 파라미터 추가
-   - board_list.html에 페이징 컨트롤 추가
-
-       <img src="./image/sb0015.png" width="600">
-
-   - 페이징번호가 모두 표시되는 문제 발생
+    - 페이징번호가 모두 표시되는 문제 발생
 
 ## 9일차
 
 ### 스프링부트 Backboard 프로젝트(계속)
-
 1. 게시판 작업
+    1. Paging 구현 계속
+        - 페이지수가 10개 안넘도록 처리
+        - 이전페이지, 다음페이지 사용여부 변경
+        - 맨첫페이지, 마지막페이지 버튼 추가
 
-   1. Paging 구현 계속
+    2. 게시글 최신 글부터 나오도록 정렬
+        1. BoardService getBoardList() 메서드에 정렬로직 추가
+      
+    3. 게시글 개수만큼 번호가 나오도록 수정
+        1. 현재는 각 페이지마다 1~10까지 반복
+        2. 게시물번호 = 전체 게시물개수 - (현재페이지번호 * 10[페이지당 게시글 수]) - 페이지당 인덱스
+        3. board_list.html의 `<td th:text="${index.count}"></td>` 를 수정
 
-      - 페이지수가 10개 안넘도록 처리
-      - 이전페이지, 다음페이지 사용여부 변경
-      - 맨첫페이지, 마지막페이지 버튼 추가
+    4. Bootstrap 배지로 각 게시글마다 댓글개수 표시
+        - MyBatis로 작업된 Spring Boot : 쿼리변경, 도메인변경, html까지 세군데 수정
+        - JPA로 작업된 Spring Boot : html만 수정하면 끝!!!
+        - board_list.html의 제목 태그에 추가
 
-   2. 게시글 최신 글부터 나오도록 정렬
-
-      1. BoardService getBoardList() 메서드에 정렬로직 추가
-
-   3. 게시글 개수만큼 번호가 나오도록 수정
-
-      1. 현재는 각 페이지마다 1~10까지 반복
-      2. 게시물번호 = 전체 게시물개수 - (현재페이지번호 \* 10[페이지당 게시글 수]) - 페이지당 인덱스
-      3. board_list.html의 `<td th:text="${index.count}"></td>` 를 수정
-
-   4. Bootstrap 배지로 각 게시글마다 댓글개수 표시
-
-      - MyBatis로 작업된 Spring Boot : 쿼리변경, 도메인변경, html까지 세군데 수정
-      - JPA로 작업된 Spring Boot : html만 수정하면 끝!!!
-      - board_list.html의 제목 태그에 추가
-
-      <img src="./image/sb0016.png" width="600" height="350">
+        <img src="./image/sb0016.png" width="600" height="350">
 
 2. Spring Boot Security : 회원가입, 로그인 등을 손쉽게 개발하도록 도와주는 의존성 라이브러리
+    1. 시큐리티 설치 
+        ```gradle
+        // 스프링부트 시큐리티 의존성
+        implementation 'org.springframework.boot:spring-boot-starter-security'
+        implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+        ```
 
-   1. 시큐리티 설치
+    2. 로그인 화면 및 H2 DB 사용불가
+        - 기본사용자 : user
+        - 패스워드 : Spring Boot 로그에 표시(ex: e197e2f2-6d99-4296-b3c3-5eef0e2aefb7)
+    3. 스프링 시큐리티 설정
+        1. /security/SecurityConfig 클래스 생성
 
-      ```gradle
-      // 스프링부트 시큐리티 의존성
-      implementation 'org.springframework.boot:spring-boot-starter-security'
-      implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
-      ```
+    4. 웹 보안용어
+        - CORS : Cross-Origin Resource Sharing
+            - 기본적으로 서로 다른 오리진(웹서버)인 경우 리소스를 서로 사용할 수 없음            
+        - CSRF : Cross-Site Request Forgery
+            - 명시적인 동의 없이 사용자를 대신해서 웹 앱이 악의적인 행동을 취하는 공격
 
-   2. 로그인 화면 및 H2 DB 사용불가
-      - 기본사용자 : user
-      - 패스워드 : Spring Boot 로그에 표시(ex: e197e2f2-6d99-4296-b3c3-5eef0e2aefb7)
-   3. 스프링 시큐리티 설정
+    6. 스프링 시큐리티 설정 (계속)
+        1. SecurityConfig 클래스 내 filterChain 메서드에 CSRF 등 관련 설정 추가
+    
+    7. 회원가입 구현
+        1. Member 엔티티 클래스 작성
+        2. MemberRepository 인터페이스 작성
+        3. MemberService 클래스 작성
+        4. MemberForm 클래스 작성
+        5. MemberController 클래스 작성
+        6. templates/signup.html 작성
 
-      1. /security/SecurityConfig 클래스 생성
+    8. MainController에 URL / 관련 메서드 작업
+        - @GetMapping("/")    
 
-   4. 웹 보안용어
+    9. 중복회원 방지 처리
+        1. MemberRepository 커스텀 메서드 추가
+        2. MemberService 중복여부 체크 메서드 추가
+        3. MemberController, setSignUp 메서드 수정
 
-      - CORS : Cross-Origin Resource Sharing
-        - 기본적으로 서로 다른 오리진(웹서버)인 경우 리소스를 서로 사용할 수 없음
-      - CSRF : Cross-Site Request Forgery
-        - 명시적인 동의 없이 사용자를 대신해서 웹 앱이 악의적인 행동을 취하는 공격
-
-   5. 스프링 시큐리티 설정 (계속)
-
-      1. SecurityConfig 클래스 내 filterChain 메서드에 CSRF 등 관련 설정 추가
-
-   6. 회원가입 구현
-
-      1. Member 엔티티 클래스 작성
-      2. MemberRepository 인터페이스 작성
-      3. MemberService 클래스 작성
-      4. MemberForm 클래스 작성
-      5. MemberController 클래스 작성
-      6. templates/signup.html 작성
-
-   7. MainController에 URL / 관련 메서드 작업
-
-      - @GetMapping("/")
-
-   8. 중복회원 방지 처리
-
-      1. MemberRepository 커스텀 메서드 추가
-      2. MemberService 중복여부 체크 메서드 추가
-      3. MemberController, setSignUp 메서드 수정
-
-   9. 회원 로그인
-      1. SecurityConfig 클래스에 로그인관련 filterChain 추가
-
+    10. 회원 로그인
+        1. SecurityConfig 클래스에 로그인관련 filterChain 추가
+  
 ## 10일차
 
 ### 스프링부트 Backboard 프로젝트(계속)
 
 2. Spring Boot Security (계속)
+    1. 회원 로그인
+        1. MemberRole enum : 스프링 시큐리티에서 역할분배(Admin, User)
+        2. MemberSecurityService : 스프링 시큐리티를 사용하는 로그인 서비스
+            - UserDetailsService 스프링 시큐리티 인터페이스를 구현
+        3. SecurityConfig 계정관련 메서드 추가
+        4. signin.html
+        5. MemberController 에 GetMapping 메서드 작업
 
-   1. 회원 로그인
+    2. 로그인 오류 처리
+        1. SecurityConfig 클래스에 BCryptPasswordEncoder 생성메서드 추가
+        2. MemberService 의 setMember() 패스워드 인코딩시 사용변경
+      
+    3. 회원 로그아웃 기능
+        1. layout.html 네비게이션 메뉴 signin, signout 태그 분리
+        2. SecurityConfig 클래스 filterChain() 메서드 내 logout 관련 설정
 
-      1. MemberRole enum : 스프링 시큐리티에서 역할분배(Admin, User)
-      2. MemberSecurityService : 스프링 시큐리티를 사용하는 로그인 서비스
-         - UserDetailsService 스프링 시큐리티 인터페이스를 구현
-      3. SecurityConfig 계정관련 메서드 추가
-      4. signin.html
-      5. MemberController 에 GetMapping 메서드 작업
-
-   2. 로그인 오류 처리
-
-      1. SecurityConfig 클래스에 BCryptPasswordEncoder 생성메서드 추가
-      2. MemberService 의 setMember() 패스워드 인코딩시 사용변경
-
-   3. 회원 로그아웃 기능
-      1. layout.html 네비게이션 메뉴 signin, signout 태그 분리
-      2. SecurityConfig 클래스 filterChain() 메서드 내 logout 관련 설정
 
 3. 개발용 H2 데이터베이스 -> Oracle로 이전
+    1. build.gradle 에 의존성 추가
 
-   1. build.gradle 에 의존성 추가
+        ```gradle
+        runtimeOnly 'com.oracle.database.jdbc:ojdbc11'   // 운영용 Oracle         
+        ```
+    2. application.properties에 Oracle 연동관련 설정 추가
+        
+        ```properties
+        ## Oracle 설정
+        spring.datasource.url=jdbc:oracle:thin:@localhost:1521:XE
+        spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+        spring.datasource.username=madang
+        spring.datasource.password=madang
 
-      ```gradle
-      runtimeOnly 'com.oracle.database.jdbc:ojdbc11'   // 운영용 Oracle
-      ```
-
-   2. application.properties에 Oracle 연동관련 설정 추가
-
-      ```properties
-      ## Oracle 설정
-      spring.datasource.url=jdbc:oracle:thin:@localhost:1521:XE
-      spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
-      spring.datasource.username=madang
-      spring.datasource.password=madang
-
-      ## JPA DB 설정
-      # H2용
-      # spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
-      spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.OracleDialect
-      ```
+        ## JPA DB 설정
+        # H2용
+        # spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+        spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.OracleDialect
+        ```
 
 4. 도커에 Oracle 21c XE 설치
+    - 11g 사용중 1521포트 사용 중인 상태에서 도커로 21c 설치
 
-   - 11g 사용중 1521포트 사용 중인 상태에서 도커로 21c 설치
+        ```shell
+        > docker pull gvenzl/oracle-xe:21
+        ...
+        > docker run -d --name oracle-21-xe -p 11521:1521 -p 8989:8989 -e ORACLE_PASSWORD=oracle gvenzl/oracle-xe:21
+        ```
 
-     ```shell
-     > docker pull gvenzl/oracle-xe:21
-     ...
-     > docker run -d --name oracle-21-xe -p 11521:1521 -p 8989:8989 -e ORACLE_PASSWORD=oracle gvenzl/oracle-xe:21
-     ```
+    - Oracle 21 도커 터미널 접근. DB 생성
 
-   - Oracle 21 도커 터미널 접근. DB 생성
-
-     ```shell
-     > docker exec -it oracle-21-xe bash
-     bash-4.4$ sqlplus / as sysdba
-     SQL> create user backboard identified by 12345;
-     User created.
-     SQL> grant connect, resource to backboard;
-     Grant succeeded.
-     SQL> alter user backboard QUOTA UNLIMITED ON USERS;
-     User altered.
-     ```
+        ```shell
+        > docker exec -it oracle-21-xe bash
+        bash-4.4$ sqlplus / as sysdba
+        SQL> create user backboard identified by 12345;      
+        User created.
+        SQL> grant connect, resource to backboard;
+        Grant succeeded.
+        SQL> alter user backboard QUOTA UNLIMITED ON USERS;
+        User altered.
+        ```
 
 5. DB 테이블 연동 작업
+    1. Board에 글쓴이 컬럼 추가
+        1. Board에 Member 클래스변수 추가
+        2. BoardService setBoardOne()에 사용자 Member 파라미터 추가
+        3. MemberService getMember() 메서드 추가
+        4. BoardController setCreate() 메서드 내 서비스 setBoardOne() 메서드에 Principle 추가 수정
+        5. 계정세션이 없는 상태에서 작성을 하면 예외발생 - BoardController 계정관련 어노테이션 `@PreAuthorize` 추가
+        6. SecurityConfig에 계정세션 접근권한 어노테이션 `@EnableMethodSecurity` 추가 
+        7. board_list.html 에 작성자 표시 태그 추가
+        8. board_detail.html 에 작성자 표시 태그 추가
 
-   1. Board에 글쓴이 컬럼 추가
+    2. Reply에 글쓴이 컬럼 추가
+        1. Reply에 Member 클래스 변수 추가
+        2. ReplyService에 사용자 Member 파라미터 추가
+        3. ReplyController setReply() Principle 추가
+        4. ReplyController @PreAuthorize 추가
+        5. board_detail.html 댓글부분에 계정관련 태그, 작성자 표시 태그 추가
 
-      1. Board에 Member 클래스변수 추가
-      2. BoardService setBoardOne()에 사용자 Member 파라미터 추가
-      3. MemberService getMember() 메서드 추가
-      4. BoardController setCreate() 메서드 내 서비스 setBoardOne() 메서드에 Principle 추가 수정
-      5. 계정세션이 없는 상태에서 작성을 하면 예외발생 - BoardController 계정관련 어노테이션 `@PreAuthorize` 추가
-      6. SecurityConfig에 계정세션 접근권한 어노테이션 `@EnableMethodSecurity` 추가
-      7. board_list.html 에 작성자 표시 태그 추가
-      8. board_detail.html 에 작성자 표시 태그 추가
+    3. Board 게시글 수정, 삭제 추가
+        1. board_detail.html 수정, 삭제 버튼 추가
+        2. BoardService에 게시글 수정메서드 putBoardOne(), 삭제메서드 deleteBoardOne() 추가
+        3. BoardController에 게시글 수정 GetMapping 메서드 추가
+        4. board_create.html th:action을 삭제, 등록과 수정을 동시에 처리할 수 있는 hidden태그를 작성
+        5. BoardController에 수정 PostMapping 메서드 추가
 
-   2. Reply에 글쓴이 컬럼 추가
 
-      1. Reply에 Member 클래스 변수 추가
-      2. ReplyService에 사용자 Member 파라미터 추가
-      3. ReplyController setReply() Principle 추가
-      4. ReplyController @PreAuthorize 추가
-      5. board_detail.html 댓글부분에 계정관련 태그, 작성자 표시 태그 추가
-
-   3. Board 게시글 수정, 삭제 추가
-      1. board_detail.html 수정, 삭제 버튼 추가
-      2. BoardService에 게시글 수정메서드 putBoardOne(), 삭제메서드 deleteBoardOne() 추가
-      3. BoardController에 게시글 수정 GetMapping 메서드 추가
-      4. board_create.html th:action을 삭제, 등록과 수정을 동시에 처리할 수 있는 hidden태그를 작성
-      5. BoardController에 수정 PostMapping 메서드 추가
 
 https://github.com/user-attachments/assets/6c18f07c-a836-4d91-9f1c-8ff51d7b8fdb
+
+
 
 ## 11일차
 
 ### 스프링부트 Backboard 프로젝트(계속)
 
 1. VS Code 재설치시 삭제해야할 폴더
-
-   - VS Code 제거
-   - C:/Users/계정/.vscode : 플러그인 등 구성
-   - C:/Users/계정/AppData/Roaming/Code : 전체설정, 백업, 캐시 등 가장 큰 폴더
-   - VS Code 재설치
+    - VS Code 제거
+    - C:/Users/계정/.vscode : 플러그인 등 구성
+    - C:/Users/계정/AppData/Roaming/Code : 전체설정, 백업, 캐시 등 가장 큰 폴더
+    - VS Code 재설치
 
 2. DB 테이블 연동 작업 (계속)
-
-   1. board_detail.html 수정일자 표시
-   2. Board 게시글 삭제 추가
-      1. board_detail.html 삭제 버튼 추가
-      2. ~~BoardRepository에 삭제처리 로직 추가 필요없음~~
-      3. BoardService에 삭제처리 로직 추가
-      4. BoardController에 삭제처리 GetMapping 추가
+    1. board_detail.html 수정일자 표시
+    2. Board 게시글 삭제 추가
+        1. board_detail.html 삭제 버튼 추가
+        2. ~~BoardRepository에 삭제처리 로직 추가 필요없음~~
+        3. BoardService에 삭제처리 로직 추가
+        4. BoardController에 삭제처리 GetMapping 추가
 
 3. 댓글에 대한 수정, 삭제
-   - 게시판과 동일하게 작성하면 됨
+    - 게시판과 동일하게 작성하면 됨
+    
 4. 좋아요 기능 추가
-
-   1. Board Entity에 `Set<Member> like` 속성 추가
-   2. board_detail.html 좋아요 버튼 추가
-   3. BoardService like 관련 메서드 추가
-   4. BoardController 에서 /board/like/{bno} GetMapping 추가
-   5. Reply Entity에 `Set<Member> like` 속성 추가
-   6. board_detail.html 댓글 부분에 좋아요 버튼 추가
-   7. ReplyService 답변가져오기 메서드 getReply() 추가
-   8. ReplyService like 관련 메서드 추가
-   9. ReplyController 에서 /reply/like/{rno} GetMapping 추가
+    1. Board Entity에 `Set<Member> like` 속성 추가    
+    2. board_detail.html 좋아요 버튼 추가
+    3. BoardService like 관련 메서드 추가
+    4. BoardController 에서 /board/like/{bno} GetMapping 추가
+    5. Reply Entity에 `Set<Member> like` 속성 추가
+    6. board_detail.html 댓글 부분에 좋아요 버튼 추가
+    7. ReplyService 답변가져오기 메서드 getReply() 추가
+    8. ReplyService like 관련 메서드 추가
+    9. ReplyController 에서 /reply/like/{rno} GetMapping 추가
 
 5. 커스텀 에러페이지 처리
-
-   1. application.properties 에서 Whitelabel Error 설정 해제
-   2. templates/error/500.html 생성
-   3. 템플릿 사이트
-      - https://freefrontend.com/html-404-templates/
-      - https://freefrontend.com/html-500-templates/
+    1. application.properties 에서 Whitelabel Error 설정 해제
+    2. templates/error/500.html 생성
+    5. 템플릿 사이트
+        - https://freefrontend.com/html-404-templates/
+        - https://freefrontend.com/html-500-templates/
 
 6. 웹 html 에디터 적용
-
-   1. HTML 에디터 종류
-      - https://ckeditor.com/ckeditor-5/ : 전세계에서 가장 유명한 유무료 웹에디터
-      - https://alex-d.github.io/Trumbowyg/ : jQuery가 필요한 간단한 무료 웹에디터
-      - https://summernote.org/ : 정말 간단한 웹에디터
-      - https://simplemde.com/ : 마크다운만 사용하는 웹에디터
-   2. Trumbowyg 적용
-
-      1. jQuery CDN 적용
-      2. layout.html에 trumbowyg 관련 css, js 링크 추가
-      3. board_create.html에 content textarea와 관련된 스크립트 작성
-      4. 추가 플러그인 js 링크 추가
-
-      <img src="./image/sb0017.png" width="600">
+    1. HTML 에디터 종류
+        - https://ckeditor.com/ckeditor-5/ : 전세계에서 가장 유명한 유무료 웹에디터
+        - https://alex-d.github.io/Trumbowyg/ : jQuery가 필요한 간단한 무료 웹에디터
+        - https://summernote.org/ : 정말 간단한 웹에디터
+        - https://simplemde.com/ : 마크다운만 사용하는 웹에디터
+    2. Trumbowyg 적용
+        1. jQuery CDN 적용
+        2. layout.html에 trumbowyg 관련 css, js 링크 추가
+        3. board_create.html에 content textarea와 관련된 스크립트 작성
+        4. 추가 플러그인 js 링크 추가
+    
+        <img src="./image/sb0017.png" width="600">
 
 7. 게시판 검색 기능 추가
-   1. `@Query` : DATA JPA Query annnotation, JPA 상에서 SQL쿼리와 유사한 방식으로 부가적인 기능을 만들고자할 때 사용. 표준 SQL이 아니라서 DBeaver, MySQL Workbench등에서 사용불가
-   2. BoardRepository 에 JPA Query 어노테이션 사용 메서드 추가
-   3. BoardService 에 getBoardList() 변경
-   4. BoardController 에 getList() 키워드 파라미터 추가
-   5. board_list.html 검색부분 추가
+    1. `@Query` : DATA JPA Query annnotation, JPA 상에서 SQL쿼리와 유사한 방식으로 부가적인 기능을 만들고자할 때 사용. 표준 SQL이 아니라서 DBeaver, MySQL Workbench등에서 사용불가
+    2. BoardRepository 에 JPA Query 어노테이션 사용 메서드 추가
+    3. BoardService 에 getBoardList() 변경
+    4. BoardController 에 getList() 키워드 파라미터 추가
+    5. board_list.html 검색부분 추가
 
+
+    
 ## 12일차
 
 ### 스프링부트 Backboard 프로젝트(계속)
-
 1. 현재 게시판 검색 중 발생 문제
-
-   - Board의 content 변수(테이블 컬럼), Column(length = 8000) 인 경우
-   - Oracle에서 컬럼 타입이 CLOB(Character Large OBject) 로 생성
-   - CLOB : 최대 2GB 텍스트 데이터 저장가능. 대용량 저장 가능
-   - 단, WHERE LIKE 문 사용불가
-   - Query annotation에서 `select distinct`를 사용하면 CLOB 컬럼 조회와 충돌발생
-   - 해결방법
-     1. Oracle Text : 검색용 인덱스를 추가 생성. JPA Native query로 CONTAINS() 함수 사용
-     2. ElasticSearch : 외부 서비스 사용해서 검색을 최적화. 도커에 엘라스틱서치 설치, 연동
-     3. 검색용 필드 추가 : VARCHAR(4000) 검색용 필드 content_search 컬럼 추가생성. content에서 html 태그 제거, 검색가능 단어만 저장하는 컬럼
+    - Board의 content 변수(테이블 컬럼), Column(length = 8000) 인 경우
+    - Oracle에서 컬럼 타입이 CLOB(Character Large OBject) 로 생성
+    - CLOB : 최대 2GB 텍스트 데이터 저장가능. 대용량 저장 가능
+    - 단, WHERE LIKE 문 사용불가
+    - Query annotation에서 `select distinct`를 사용하면 CLOB 컬럼 조회와 충돌발생
+    - 해결방법
+        1. Oracle Text : 검색용 인덱스를 추가 생성. JPA Native query로 CONTAINS() 함수 사용
+        2. ElasticSearch : 외부 서비스 사용해서 검색을 최적화. 도커에 엘라스틱서치 설치, 연동
+        3. 검색용 필드 추가 : VARCHAR(4000) 검색용 필드 content_search 컬럼 추가생성. content에서 html 태그 제거, 검색가능 단어만 저장하는 컬럼
 
 2. 게시판 검색 (계속)
-
-   1. BoardRepository findAllByKeyword의 `@Query` 를 편집. reply 제거, distinct 키워드 제거
-   2. 11일차 게시판 검색 기능 추가와 동일
-   3. board_list.html 검색부분, form 히든영역, javascript 추가
+    1. BoardRepository findAllByKeyword의 `@Query` 를 편집. reply 제거, distinct 키워드 제거
+    2. 11일차 게시판 검색 기능 추가와 동일
+    3. board_list.html 검색부분, form 히든영역, javascript 추가
 
 3. 파일업로드
-   1. Board Entity에 파일업로드 관련 변수 -> 컬럼
-   2. BoardController 게시글 저장 메서드에 파일업로드 로직 추가
-   3. BoardService setBoardOne() 메서드 수정
-   4. application.properties 에 파일 업로드 위치 설정
-   5. board_create.html에 파일업로드 입력 + form 태그 enctype 속성 추가
-   6. board_detail.html에 파일다운로드 링크 추가
-   7. BoardController에 파일 다운로드 GetMapping 메서드 추가
-   8. 게시글 수정 시 업로드 관련 처리
-      - BoardForm 클래스에 파일업로드 관련 필드 추가(Board 엔티티와 동일)
-   9. BoardController 수정관련 GetMapping 메서드에 로직추가
-   10. BoardService putBoardOne() 메서드에 파일관련 파라미터 추가, 로직 수정
-   11. 파일업로드 사이즈 설정 - application.properties
-   12. 파일업로드시 파일명에 한글이 있으면 문제발생! - 한글을 UTF로 인코딩해서 저장
+    1. Board Entity에 파일업로드 관련 변수 -> 컬럼
+    2. BoardController 게시글 저장 메서드에 파일업로드 로직 추가
+    3. BoardService setBoardOne() 메서드 수정
+    4. application.properties 에 파일 업로드 위치 설정
+    5. board_create.html에 파일업로드 입력 + form 태그 enctype 속성 추가
+    6. board_detail.html에 파일다운로드 링크 추가
+    7. BoardController에 파일 다운로드 GetMapping 메서드 추가
+    8. 게시글 수정 시 업로드 관련 처리
+        - BoardForm 클래스에 파일업로드 관련 필드 추가(Board 엔티티와 동일)
+    9. BoardController 수정관련 GetMapping 메서드에 로직추가
+    10. BoardService putBoardOne() 메서드에 파일관련 파라미터 추가, 로직 수정
+    11. 파일업로드 사이즈 설정 - application.properties
+    12. 파일업로드시 파일명에 한글이 있으면 문제발생! - 한글을 UTF로 인코딩해서 저장
 
 ## 13일차
 
 ### 스프링부트 Backboard 프로젝트(계속)
-
 - 시맨틱웹
-  - 웹사이트의 화면 구성을 쉽게 알수 있도록 특수 태그형태의 기술
-  - 특수태그 : header, main, section, article, aside, footer
+    - 웹사이트의 화면 구성을 쉽게 알수 있도록 특수 태그형태의 기술
+    - 특수태그 : header, main, section, article, aside, footer
 
 1. 부트스트랩 프리테마 NiceSchool로 변경
+    1. 초기 작업
+        1. assets 폴더 복사해오기
+        2. favicon 커스터마이징
+        3. 구글폰트 구성
+        4. 3rd party vendor 라이브러리 css, head내 구성
+        5. 메뉴 부분 header 태그 복사
+        6. main 태그를 th:block과 동일하게 사용 class="main" 
+        7. footer 태그 아래는 복사, src 주소 변경
+        8. header > nav 메뉴, 주소 변경
+    2. Index 페이지 관련 이전
+        1. 타임리프 태그 아래에 이전
 
-   1. 초기 작업
-      1. assets 폴더 복사해오기
-      2. favicon 커스터마이징
-      3. 구글폰트 구성
-      4. 3rd party vendor 라이브러리 css, head내 구성
-      5. 메뉴 부분 header 태그 복사
-      6. main 태그를 th:block과 동일하게 사용 class="main"
-      7. footer 태그 아래는 복사, src 주소 변경
-      8. header > nav 메뉴, 주소 변경
-   2. Index 페이지 관련 이전
+            ```html
+            <html layout:decorate="~{layout}">
+                <div layout:fragment="content">
+                    <!-- 여기에 복사 -->
+            ```
+        2. 이미지, 동영상 경로 일치
 
-      1. 타임리프 태그 아래에 이전
-
-         ```html
-         <html layout:decorate="~{layout}">
-             <div layout:fragment="content">
-                 <!-- 여기에 복사 -->
-         ```
-
-      2. 이미지, 동영상 경로 일치
-
-   3. 전체 메뉴 링크 관련된 페이지 작업
-      1. 404.html
-      2. IntroController 클래스 생성, /intro/about GetMapping메서드 작성
-      3. templates/intro/about.html 생성
-      4. 동일하게 페이지 옮기기
+    3. 전체 메뉴 링크 관련된 페이지 작업
+        1. 404.html
+        2. IntroController 클래스 생성, /intro/about GetMapping메서드 작성
+        3. templates/intro/about.html 생성
+        4. 동일하게 페이지 옮기기 
 
 ## 14일차
 
 ### 스프링부트 Backboard 프로젝트(계속)
-
 1. 부트스트랩 프리테마 NiceSchool로 변경
+    1. 버튼 CSS 변경 
+    2. `th:style="|background-image: url('@{/img/education/showcase-1.webp}')|"` 오류해결
+    3. About DB연동
+        1. 전체 내용 Entity
+        2. 역사 리스트용 Entity
+        3. AboutRepository 
+        4. AboutService
+        5. IntroController를 수정
+        6. about.html 타임리프와 연동
 
-   1. 버튼 CSS 변경
-   2. `th:style="|background-image: url('@{/img/education/showcase-1.webp}')|"` 오류해결
-   3. About DB연동
+    4. 관리자(사용자)가 쉽게 데이터를 입력할 수 있는 화면 개발
+        1. layout.html 에 관리자 메뉴 추가
+        2. AdminController 생성 @GetMapping("/manage") 메서드 생성
+        3. /admin/manage.html을 board_detail.html 입력화면 작업
 
-      1. 전체 내용 Entity
-      2. 역사 리스트용 Entity
-      3. AboutRepository
-      4. AboutService
-      5. IntroController를 수정
-      6. about.html 타임리프와 연동
-
-   4. 관리자(사용자)가 쉽게 데이터를 입력할 수 있는 화면 개발
-
-      1. layout.html 에 관리자 메뉴 추가
-      2. AdminController 생성 @GetMapping("/manage") 메서드 생성
-      3. /admin/manage.html을 board_detail.html 입력화면 작업
-
-      4. AdminController @PostMapping("/about") 메서드 생성
-      5. History 관련 리스트 및 입력화면 html 추가
-      6. AdminController @PostMapping("/history/{id}") 메서드 생성
-      7. HistoryRepository, HistoryService 생성 작성
+        4. AdminController @PostMapping("/about") 메서드 생성
+        5. History 관련 리스트 및 입력화면 html 추가
+        6. AdminController @PostMapping("/history/{id}") 메서드 생성
+        7. HistoryRepository, HistoryService 생성 작성
 
 ## 15일차
 
 ### 스프링부트 Backboard 프로젝트(계속)
-
 1. 부트스트랩 프리테마 NiceSchool로 변경
+    1. 관리자 화면 history 수정 부분 완료
+        - AdminController에 히스토리 수정화면으로 넘어가는 GetMapping() 추가
+        - HistoryService 에 리포지토리에서 데이터 가져오는 메서드 추가
+        - HistoryRepository에 한건 가져오는 메서드 추가
+        - /admin/history.html 작성
+        - AdminController에 히스토리 수정가능한 PostMapping() 추가
 
-   1. 관리자 화면 history 수정 부분 완료
-
-      - AdminController에 히스토리 수정화면으로 넘어가는 GetMapping() 추가
-      - HistoryService 에 리포지토리에서 데이터 가져오는 메서드 추가
-      - HistoryRepository에 한건 가져오는 메서드 추가
-      - /admin/history.html 작성
-      - AdminController에 히스토리 수정가능한 PostMapping() 추가
-
-   2. 로그인한 관리자만 수정할 수 있도록
-      - `@PreAuthorize` 어노테이션으로 처리
+    2. 로그인한 관리자만 수정할 수 있도록
+        - `@PreAuthorize` 어노테이션으로 처리
 
 2. AWS Lightsale로 업로드
+    1. AWS 회원가입
+    2. LightSale  
+        1. 인스턴스 생성
+        2. 리전 확인
+        3. Linux/Unix > OS전용 > Ubuntu 22.x 선택
+        4. 인스턴스 플랜 선택(90일 무료)
+        5. 인스턴스 이름 지정 > 생성버튼
+        6. 인스턴스 퍼블릭 고정 IP 주소 확인
+    3. 네트워크
+        1. IPv4 방화벽 설정 : 9070 포트 오픈
+    
+    4. 인스턴스만 삭제하면 90일 이후 비용발생 안함
 
-   1. AWS 회원가입
-   2. LightSale
-      1. 인스턴스 생성
-      2. 리전 확인
-      3. Linux/Unix > OS전용 > Ubuntu 22.x 선택
-      4. 인스턴스 플랜 선택(90일 무료)
-      5. 인스턴스 이름 지정 > 생성버튼
-      6. 인스턴스 퍼블릭 고정 IP 주소 확인
-   3. 네트워크
+    5. 외부 서버접속 SSH키 발급
+        1. 아이디 > 계정
+        2. SSH 키 탭 진입
+        3. 기본키를 다운로드. *.pem
 
-      1. IPv4 방화벽 설정 : 9070 포트 오픈
+    6. pem 을 ppk로 변경
+        1. PuTTYgen 실행 > Load > AWS에서 받은 키를 선택
+        2. Save private key로 PPK로 저장
+    7. PuTTY
+        1. PuTTY 터미널 툴 설치 : https://www.putty.org/ 
+        2. 실행
+        3. AWS 고정아이피 host에 입력
+        4. Connection > SSH > Auth > Credential > ppk 파일 선택
+        5. login as : ubuntu 입력 엔터
 
-   4. 인스턴스만 삭제하면 90일 이후 비용발생 안함
+    8. FTP : https://filezilla-project.org/
+        1. Client 설치
+        2. 사이트관리자 > 새 사이트 
+            - 프로토콜, SFTP : SSH File Transfer Protocol로 변경
+            - 호스트 : AWS 퍼블릭 IP
+            - 로그온 유형 : 키 파일 선택
+            - 사용자 : Ubuntu
+            - 키파일 : *.pem / *.ppk 중 선택 
+            - 연결    
 
-   5. 외부 서버접속 SSH키 발급
-
-      1. 아이디 > 계정
-      2. SSH 키 탭 진입
-      3. 기본키를 다운로드. \*.pem
-
-   6. pem 을 ppk로 변경
-      1. PuTTYgen 실행 > Load > AWS에서 받은 키를 선택
-      2. Save private key로 PPK로 저장
-   7. PuTTY
-
-      1. PuTTY 터미널 툴 설치 : https://www.putty.org/
-      2. 실행
-      3. AWS 고정아이피 host에 입력
-      4. Connection > SSH > Auth > Credential > ppk 파일 선택
-      5. login as : ubuntu 입력 엔터
-
-   8. FTP : https://filezilla-project.org/
-
-      1. Client 설치
-      2. 사이트관리자 > 새 사이트
-         - 프로토콜, SFTP : SSH File Transfer Protocol로 변경
-         - 호스트 : AWS 퍼블릭 IP
-         - 로그온 유형 : 키 파일 선택
-         - 사용자 : Ubuntu
-         - 키파일 : _.pem / _.ppk 중 선택
-         - 연결
-
-   9. Ubuntu에 서버환경 설정
-
-      1. 현재 호스트명 ip-private_ip
-      2. hostnamectl 명령어로 변경
-
-         ```shell
-         > sudo hostnamectl set-hostname <변경할호스트명>
-         > sudo reboot
-         ```
-
-      3. 한국시간으로 변경
-
-         ```shell
-         > sudo ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
-         ```
-
-      4. JDK 설치
-
-         ```shell
-         ~$ sudo apt update  // 1
-
-         ~$ sudo apt upgrade   // 나중에 필요할 때 업그레이드
-
-         ~$ java --version // 2
-
-         ~$ sudo apt install openjdk-17-jdk  // 3
-         Do you want to continue? [Y/n] y
-         No VM guests are running outdated hypervisor (qemu) binaries on this host.
-         ubuntu@hugomgsung:~$
-         ```
-
-      5. VS Code에서 jar파일 생성되도록 빌드
-
-         1. test 폴더 내 java파일의 @SpringbootTest @Test 부분 주석처리(빌드 오류)
-         2. **application.properties**, build.gradle을 배포할 내용으로 수정
-         3. Gradle for java > Tasks > build > build 먼저 처리
-         4. Gradle for java > Tasks > build > bootJar 실행
-         5. build/libs/\*SNAPSHOT.jar 파일 생성 확인
-
-      6. application.properties 설정
-
-         1. Ubuntu에 맞게 변경
-         2. build, bootJar 다시 수행
-
-      7. FTP로 배포
-         1. sbserver 폴더 생성
-         2. \*SNAPSHOP.jar 복사
-         3. 명령어로 실행
+    9. Ubuntu에 서버환경 설정
+        1. 현재 호스트명 ip-private_ip 
+        2. hostnamectl 명령어로 변경
 
             ```shell
-            ~$ java -jar backboard-1.0.2-SNAPSHOT.jar
-            ...
+            > sudo hostnamectl set-hostname <변경할호스트명>
+            > sudo reboot
             ```
 
-   10. 백그라운드에서 서버 실행 쉘 작성
+        3. 한국시간으로 변경
 
-       1. nano start.sh 쉘 파일 생성.(반드시 Ubuntu에서 작성할 것)
+            ```shell
+            > sudo ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+            ```
 
-          ```shell
-          #!/bin/bash
+        4. JDK 설치
+                        
+            ```shell
+            ~$ sudo apt update  // 1
 
-          JAR=backboard-1.0.2-SNAPSHOT.jar
+            ~$ sudo apt upgrade   // 나중에 필요할 때 업그레이드 
 
-          nohup java -jar $JAR > /dev/null 2>&1 &
-          ```
+            ~$ java --version // 2
 
-       2. nano stop.sh 쉘 작성
+            ~$ sudo apt install openjdk-17-jdk  // 3
+            Do you want to continue? [Y/n] y
+            No VM guests are running outdated hypervisor (qemu) binaries on this host.
+            ubuntu@hugomgsung:~$
+            ```
 
-          ```shell
-          #!/bin/bash
+        5. VS Code에서 jar파일 생성되도록 빌드
+            1. test 폴더 내 java파일의 @SpringbootTest @Test 부분 주석처리(빌드 오류)
+            2. **application.properties**, build.gradle을 배포할 내용으로 수정
+            3. Gradle for java > Tasks > build > build 먼저 처리
+            4. Gradle for java > Tasks > build > bootJar 실행
+            5. build/libs/*SNAPSHOT.jar 파일 생성 확인
 
-          BB_PID=$(ps -ef | grep java | grep backboard | awk '{print $2}')
+        6. application.properties 설정
+            1. Ubuntu에 맞게 변경
+            2. build, bootJar 다시 수행           
+        
+        7. FTP로 배포
+            1. sbserver 폴더 생성
+            2. *SNAPSHOP.jar 복사
+            3. 명령어로 실행
+                
+                ```shell
+                ~$ java -jar backboard-1.0.2-SNAPSHOT.jar
+                ...            
+                ```
 
-          if [ -z "$BB_PID" ];
-          then
-              echo "BACKBOARD is not running"
-          else
-              kill -9 $BB_PID
-              echo "BACKBOARD terminated!"
-          fi
-          ```
+    10. 백그라운드에서 서버 실행 쉘 작성
+        1. nano start.sh 쉘 파일 생성.(반드시 Ubuntu에서 작성할 것)
 
-       3. chmod +x \*.sh 실행
+            ```shell
+            #!/bin/bash
+            
+            JAR=backboard-1.0.2-SNAPSHOT.jar
+
+            nohup java -jar $JAR > /dev/null 2>&1 &
+            ```
+        2. nano stop.sh 쉘 작성
+
+            ```shell
+            #!/bin/bash
+
+            BB_PID=$(ps -ef | grep java | grep backboard | awk '{print $2}')
+
+            if [ -z "$BB_PID" ];
+            then
+                echo "BACKBOARD is not running"
+            else
+                kill -9 $BB_PID
+                echo "BACKBOARD terminated!"
+            fi
+            ```
+
+        3. chmod +x *.sh 실행
 
 3. 추가오류 확인
-   1. admin/manage, intro/about 발생하는 내부서버(500) 오류 확인 수정
+    1. admin/manage, intro/about 발생하는 내부서버(500) 오류 확인 수정
 
 ## 16일차
 
 ### 스프링부트 Backboard 프로젝트 (계속)
-
 1. 사용자 역할(Role) 추가
+    1. Member Entity에 MemberRole 추가
+    2. MemberService setMember() 에 컬럼값 입력 로직 추가
+    3. 권한이 필요한 페이지 컨트롤러 메서드에 preAuthorize 어노테이션 사용
+    4. MemberSecuritySerivce 에 로그인후 권한부여 로직 수정
 
-   1. Member Entity에 MemberRole 추가
-   2. MemberService setMember() 에 컬럼값 입력 로직 추가
-   3. 권한이 필요한 페이지 컨트롤러 메서드에 preAuthorize 어노테이션 사용
-   4. MemberSecuritySerivce 에 로그인후 권한부여 로직 수정
+        ```java
+        if (member.getRole().equals(MemberRole.ADMIN)) {        
+            authorities.add(new SimpleGrantedAuthority(MemberRole.ADMIN.getValue())); // ROLE_ADMIN
+        } else {
+            authorities.add(new SimpleGrantedAuthority(MemberRole.USER.getValue())); // ROLE_USER
+        }
+        ```
 
-      ```java
-      if (member.getRole().equals(MemberRole.ADMIN)) {
-          authorities.add(new SimpleGrantedAuthority(MemberRole.ADMIN.getValue())); // ROLE_ADMIN
-      } else {
-          authorities.add(new SimpleGrantedAuthority(MemberRole.USER.getValue())); // ROLE_USER
-      }
-      ```
+2. 소셜로그인 OAuth2(Opne Authorization 2.0) 
+    1. 의존성 추가
+        ```gradle
+        implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+        ```
+    2. SecurityConfig에 oauth2Login 설정
+    3. Google OAuth2 신청 : https://console.cloud.google.com/
+        1. 새 프로젝트 : 프로젝트 이름, 결제 계정 옵션, 조직 없음 > 만들기
+        2. API 및 서비스 
+            1. OAuth 동의화면 
+            2. 시작하기 
+            3. 앱 이름 입력, 사용자 지원 이메일 본인 메일 선택 > 다음
+            4. 대상 외부 선택 > 다음
+            5. OAuth 클라이언트 만들기 버튼 활성화
+        3. OAuth 클라이언트 ID 만들기
+            1. 애플리케이션 유형 웹 애플리케이션 선택 
+            2. 이름은 옵션
+            3. `승인된 리디렉션 URI` : 제일 중요!!!
+                - +URI 추가버튼 클릭
+                - http://localhost:9097/login/oauth2/code/google
+                - 만들기 클릭
+            4. 데이터 액세스
+                - 범위 추가 또는 삭제 버튼 
+                - .../auth/userinfo.email, .../auth/userinfo.profile, openid 선택, 업데이트
+                - Save 버튼 클릭
+            5. Cloud 개요 > 대시보드 > API 개요 이동
+                - 사용자 인증정보
+                - 구글 클라이언트ID 복사
+                - 클라이언트 보안 비밀번호 Add Secret, 복사
+            6. 대상
+                - 테스트 사용자 등록
+                - 배포시 앱 게시를 눌러야
 
-2. 소셜로그인 OAuth2(Opne Authorization 2.0)
+        4. application.properties 구글 설정 추가
+        5. CustomOAuth2UserService 클래스 작성 loadUser() 오버라이드메서드 작성
+            - registrationid를 가져오는 부분까지 우선 작성
+        6. dto.OAuth2Reponse 인터페이스 생성
+        7. dto.GoogleResponse, NaverReponse 클래스를 따로 생성. 돌려받은 json의 구조가 다름
 
-   1. 의존성 추가
-      ```gradle
-      implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-      ```
-   2. SecurityConfig에 oauth2Login 설정
-   3. Google OAuth2 신청 : https://console.cloud.google.com/
+            ```json
+            // 구글데이터 
+            {
+                "resultcode": "00",
+                "message": "success",
+                "email" : "test@gmail.com",
+                "profile" : "...."
+                // ...
+            }
 
-      1. 새 프로젝트 : 프로젝트 이름, 결제 계정 옵션, 조직 없음 > 만들기
-      2. API 및 서비스
-         1. OAuth 동의화면
-         2. 시작하기
-         3. 앱 이름 입력, 사용자 지원 이메일 본인 메일 선택 > 다음
-         4. 대상 외부 선택 > 다음
-         5. OAuth 클라이언트 만들기 버튼 활성화
-      3. OAuth 클라이언트 ID 만들기
+            // 네이버데이터 
+            { 
+                "resultcode": "00",
+                "message": "success",
+                "response": {
+                    "email" : "test@naver.com",
+                    "nickname" : "Blah~~~",
+                    ///.. 생략
+                    "birthday" : "10-01"
+                }
+            }
+            ```
+        8. CustomOAuth2UserService 아래부분 완성
+        9. SecurityConfig에 CustomOAuth2UserService 를 추가
+        10. /member_signin.html에 소셜로그인 버튼 추가
 
-         1. 애플리케이션 유형 웹 애플리케이션 선택
-         2. 이름은 옵션
-         3. `승인된 리디렉션 URI` : 제일 중요!!!
-            - +URI 추가버튼 클릭
-            - http://localhost:9097/login/oauth2/code/google
-            - 만들기 클릭
-         4. 데이터 액세스
-            - 범위 추가 또는 삭제 버튼
-            - .../auth/userinfo.email, .../auth/userinfo.profile, openid 선택, 업데이트
-            - Save 버튼 클릭
-         5. Cloud 개요 > 대시보드 > API 개요 이동
-            - 사용자 인증정보
-            - 구글 클라이언트ID 복사
-            - 클라이언트 보안 비밀번호 Add Secret, 복사
-         6. 대상
-            - 테스트 사용자 등록
-            - 배포시 앱 게시를 눌러야
+        11. Member Entity에 privder 추가        
+        12. CustomOAuth2UserService oAuth2Reponse 이후 Member저장로직 추가
+        13. dto.MemberDto 생성
+        14. CustomOAuth2UserService Member 저장로직 이후 로그인 세션에 넣을 객체생성
+        15. dto.CustomOAuth2User 클래스 생성
+        16. CustomOAuth2UserService MemberDto 리턴부분 추가
+        17. CustomOAuth2User에 UserDetails 인터페이스 추가, 구현안된 메서드 추가 구현
 
-      4. application.properties 구글 설정 추가
-      5. CustomOAuth2UserService 클래스 작성 loadUser() 오버라이드메서드 작성
-         - registrationid를 가져오는 부분까지 우선 작성
-      6. dto.OAuth2Reponse 인터페이스 생성
-      7. dto.GoogleResponse, NaverReponse 클래스를 따로 생성. 돌려받은 json의 구조가 다름
+## 17일차
 
-         ```json
-         // 구글데이터
-         {
-             "resultcode": "00",
-             "message": "success",
-             "email" : "test@gmail.com",
-             "profile" : "...."
-             // ...
-         }
+### 공공데이터 포털 OpenAPI 활용
+1. 새 프로젝트 생성
+    1. 명령 팔레트...(Ctrl + Shift + P)
+    2. Sprig Initializr: Create a Gradle Project...
+        1. Spring Boot version : 3.5.3
+        2. Java
+        3. Group Id : com.pknu
+        4. Artifial Id : openapi_demo
+        5. Packaging : Jar
+        6. Java version : 17
+        7. Spring Web, Spring Boot DevTools, Lombok, Thymeleaf
+        8. 경로 선택, 프로젝트 오픈
 
-         // 네이버데이터
-         {
-             "resultcode": "00",
-             "message": "success",
-             "response": {
-                 "email" : "test@naver.com",
-                 "nickname" : "Blah~~~",
-                 ///.. 생략
-                 "birthday" : "10-01"
-             }
-         }
-         ```
+2. application.properties 초기설정
 
-      8. CustomOAuth2UserService 아래부분 완성
-      9. SecurityConfig에 CustomOAuth2UserService 를 추가
-      10. /member_signin.html에 소셜로그인 버튼 추가
+    ```properties
+    ## 서버포트
+    server.port=9099
 
-      11. Member Entity에 privder 추가
-      12. CustomOAuth2UserService oAuth2Reponse 이후 Member저장로직 추가
-      13. dto.MemberDto 생성
-      14. CustomOAuth2UserService Member 저장로직 이후 로그인 세션에 넣을 객체생성
-      15. dto.CustomOAuth2User 클래스 생성
-      16. CustomOAuth2UserService MemberDto 리턴부분 추가
-      17. CustomOAuth2User에 UserDetails 인터페이스 추가, 구현안된 메서드 추가 구현
+    ## 로그색상 변경
+    spring.output.ansi.enabled=always
 
-3. 나중에 추가해야할 부분
-   1. [x] 회원가입 후 바로 로그인되는 기능
-   2. [x] 로그인한 사람 표시기능
-   3. [x] 파일 업로드
-   4. [x] 부트스트랩 프리테마 NiceSchool로 변경
-   5. [ ] 파일사이즈 초과시 JS로 방지
-   6. [x] 구글로그인
-   7. [x] AWS 라이트세일 업로드
-   8. [ ] 게시글에 이미지 추가시 img 태그에 width="100%" 추가작업
-   9. [x] 사용자 정보에 Role 추가
-   10. [ ] Contact로 메일보내기
-   11. [ ] 공공데이터 포털 API 사용
+    ## 서버 자동재시작
+    spring.devtools.restart.enabled=true
+    spring.devtools.livereload.enabled=true
+    spring.devtools.restart.additional-paths=src/main/java
+
+    ## 커스텀 에러 관련
+    # 기본 Whitelabel Error Page 비활성화
+    server.error.whitelabel.enabled=true
+    ```
+
+3. 공공 데이터포털 - http://data.go.kr/
+    1. 회원가입 및 로그인
+    2. 부산광역시 부산맛집정보 서비스 활용 신청, 10분정도 소요
+
+        <img src="./image/sb0019.png" width="700">
+
+    3. 마이페이지 > 데이터활용 > Open API > 활용신청 현황
+    4. 계발계정 상세보기
+        - 일반 인증키(Encoding) 사용, 복사
+    5. 활용정보 상세기능 정보 > 원하는 서비스 미리보기 확인 클릭
+        - 서비스키 입력
+        - resultType 입력 후 미리보기 클릭
+    6. 미리보기
+
+        <img src="./image/sb0020.png" width="600">
+    
+4. OpenAPI 호출 로직 구현
+    1. 패키지 생성
+        1. controller : 사용자 요청 진입점. 많은 로직이 들어가지 않고 동작만 정의
+        2. dto : 서버내에서 사용할 데이터를 주고받을 때
+        3. entity : DB에 저장될 테이블 정의. 데이터 전달할 때
+        4. repository : JPA등 DB에 저장할 때 필요한 인터페이스
+        5. service : 동작할 로직이 정의되어있을 실제 일할 부분
+
+    2. controller.RestaurantController 생성
+        - 기본 요청 RESTful URL GetMapping 메서드 생성
+    
+    3. service.RestaurantService 생성
+        - fetchRestaurants() 메서드 작성
+
+    4. build.gradle JSON용 라이브러리 의존성 추가
+
+        ```groovy
+        // JSON 파싱 라이브러리
+	    implementation 'com.fasterxml.jackson.core:jackson-databind'
+        ```
+
+    5. JSON 결과를 담을 모델클래스 생성
+        1. dto.Item 클래스
+        2. dto.FoodKrResponse 클래스
+
+    6. service.RestaurantService
+        - JSON 파싱 완료, 리턴 로직 추가
+
+    7. pageNo 콤보박스 추가 페이징 처리
+
+    8. Bootstrap 디자인 접목
+
+5. RestAPI 서비스
+
+6. DB 저장
+
+
+9. 나중에 추가해야할 부분
+    1. [x] 회원가입 후 바로 로그인되는 기능
+    2. [x] 로그인한 사람 표시기능
+    3. [x] 파일 업로드
+    4. [x] 부트스트랩 프리테마 NiceSchool로 변경
+    5. [ ] 파일사이즈 초과시 JS로 방지
+    6. [x] 구글로그인
+    7. [x] AWS 라이트세일 업로드
+    8. [ ] 게시글에 이미지 추가시 img 태그에 width="100%" 추가작업
+    9. [x] 사용자 정보에 Role 추가
+    10. [ ] Contact로 메일보내기
+    11. [ ] 공공데이터 포털 API 사용
+  
